@@ -2,6 +2,10 @@
     const root = document.getElementById('game-app');
     const gameId = root.dataset.gameId;
     const t = (key, vars) => window.SkullKingI18n ? window.SkullKingI18n.t(key, vars) : key;
+    const bonusLabel = (preset) => {
+        const lang = window.SkullKingI18n ? window.SkullKingI18n.lang() : 'es';
+        return (lang !== 'es' && preset.label_en) ? preset.label_en : preset.label;
+    };
     window.addEventListener('langchange', render);
 
     function colorDot(color) {
@@ -570,7 +574,7 @@
                 optBtn.className = 'bonus-option';
 
                 const labelSpan = document.createElement('span');
-                labelSpan.textContent = preset.label;
+                labelSpan.textContent = bonusLabel(preset);
 
                 const badge = document.createElement('span');
                 badge.className = 'count-badge';
