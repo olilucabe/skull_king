@@ -1,5 +1,5 @@
-// `max` = número máximo de veces que este bonus se puede añadir por ronda
-// (entre todos los jugadores). Pon `null` o quítalo para no limitarlo.
+// `max` = maximum times this bonus can be applied per round (across all players).
+// Set to `null` or omit to remove the limit.
 const BASE_BONUSES = [
     { label: '🟣🟢🟡 14', value: 10, max: 3 },
     { label: '⚫ 14', value: 20, max: 1 },

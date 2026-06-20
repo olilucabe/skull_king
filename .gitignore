@@ -1,9 +1,9 @@
-# Base de datos (datos privados de partidas)
+# Database (private game data)
 *.db
 *.db-shm
 *.db-wal
 
-# Variables de entorno (claves secretas, configuración de servidor)
+# Environment variables (secret keys, server config)
 .env
 .env.local
 
@@ -18,13 +18,13 @@ dist/
 build/
 .eggs/
 
-# Entornos virtuales
+# Virtual environments
 venv/
 .venv/
 env/
 ENV/
 
-# Distribución / empaquetado
+# Packages / archives
 *.zip
 *.tar.gz
 

@@ -544,7 +544,7 @@ input:focus, select:focus {
     margin-bottom: 0.75rem;
 }
 
-/* Barra de info de ronda: contador de apuestas + Kraken */
+/* Round info bar: bid counter + Kraken button */
 .round-info-bar {
     display: flex;
     align-items: center;
@@ -592,7 +592,7 @@ input:focus, select:focus {
     color: #fff;
 }
 
-/* Estrella de ganador de ronda */
+/* Round winner star */
 .winner-star {
     background: none;
     border: none;

@@ -14,11 +14,11 @@
     let currentView = 'round';
     const expandedRounds = new Set();
 
-    // Per-round wizard state: 'bids' (apuestas) then 'tricks' (bazas + bonus).
+    // Per-round wizard state: 'bids' then 'tricks' (tricks won + bonuses).
     let roundPhase = 'bids';
     let roundPhaseFor = null;
     let expandedPlayers = new Set();
-    let roundWinner = null; // player id del ganador de la ronda anterior (muestra estrella)
+    let roundWinner = null; // player id of the previous round winner (shown as a star in the next bids phase)
 
     async function loadGame() {
         const res = await fetch(`/api/game/${gameId}`);
@@ -292,7 +292,7 @@
         const rowsData = [];
         const tricksRows = [];
 
-        // --- Autosave: persist every change to bids/tricks/bonus --------------
+        // --- Autosave: persist every change to bids/tricks/bonuses ------------
         const statusEl = document.createElement('div');
         statusEl.className = 'save-status';
 
@@ -347,7 +347,7 @@
 
         container.appendChild(statusEl);
 
-        // --- Paso 1: Apuestas -------------------------------------------------
+        // --- Step 1: Bids -----------------------------------------------------
         const bidsSection = document.createElement('div');
         bidsSection.className = 'round-phase';
 
@@ -356,7 +356,7 @@
         bidsTitle.textContent = 'Paso 1 de 2 · Apuestas';
         bidsSection.appendChild(bidsTitle);
 
-        // --- Paso 2: Bazas conseguidas + bonus ---------------------------------
+        // --- Step 2: Tricks won + bonuses -------------------------------------
         const tricksSection = document.createElement('div');
         tricksSection.className = 'round-phase';
 
@@ -372,7 +372,7 @@
         }, 'btn btn-secondary');
         tricksSection.appendChild(backBtn);
 
-        // Contador de apuestas + botón Kraken
+        // Bid counter + Kraken button
         const roundInfoBar = document.createElement('div');
         roundInfoBar.className = 'round-info-bar';
         const bidCounterEl = document.createElement('span');
@@ -398,7 +398,7 @@
                 + (totalBid > available ? ' over' : totalBid === available ? ' exact' : '');
         }
 
-        // Estrellas de ganador por ronda
+        // Per-round winner stars
         const starBtns = [];
         function refreshStars() {
             starBtns.forEach(({ playerId, btn }) => {
@@ -415,9 +415,9 @@
             });
         }
 
-        // Bonus disponibles para esta ronda, compartidos entre jugadores: el
-        // número de veces que se puede aplicar cada bonus está limitado por
-        // su `max` (p.ej. solo hay un Skull King por ronda).
+        // Bonuses available for this round, shared across all players: each
+        // bonus can be applied at most `max` times total (e.g. only one
+        // Skull King per round).
         const presets = [];
         const groupBreaks = [];
         presets.push(...BASE_BONUSES);
@@ -439,7 +439,7 @@
         gameData.players.forEach((p) => {
             const entry = roundScores[String(p.id)] || { bid: 0, tricks: 0, bonus: 0 };
 
-            // Apuesta (paso 1)
+            // Bid (step 1)
             const bidCard = document.createElement('div');
             bidCard.className = 'player-card';
 
@@ -465,7 +465,7 @@
 
             bidsSection.appendChild(bidCard);
 
-            // Bazas conseguidas + bonus (paso 2), colapsado por defecto
+            // Tricks won + bonuses (step 2), collapsed by default
             const tricksCard = document.createElement('div');
             tricksCard.className = 'player-card collapsible-card';
 
@@ -508,7 +508,7 @@
             tricksBodyInner.className = 'collapsible-body-inner';
             tricksBody.appendChild(tricksBodyInner);
 
-            // Bazas conseguidas
+            // Tricks won
             const tricksGroup = document.createElement('div');
             tricksGroup.className = 'field-group';
             const tricksLabel = document.createElement('div');
@@ -519,7 +519,7 @@
             tricksGroup.append(tricksLabel, tricksRow.element);
             tricksBodyInner.appendChild(tricksGroup);
 
-            // Bonus
+            // Bonuses
             const bonusGroup = document.createElement('div');
             bonusGroup.className = 'field-group';
 
@@ -821,7 +821,7 @@
         title.textContent = 'Progreso por ronda';
         container.appendChild(title);
 
-        const pointCount = lastPlayedRound + 1; // ronda 0 (inicio) .. lastPlayedRound
+        const pointCount = lastPlayedRound + 1; // round 0 (start) .. lastPlayedRound
         const series = gameData.players.map((p) => ({
             id: p.id,
             name: p.name,
@@ -918,7 +918,7 @@
         }));
         currentTotals.sort((a, b) => b.total - a.total);
 
-        // Rango competitivo: empates comparten posición (1,1,3 en vez de 1,2,3)
+        // Competitive ranking: ties share the same position (1,1,3 instead of 1,2,3)
         const currentRanks = currentTotals.map((p, idx) =>
             idx === 0 ? 1
             : currentTotals[idx].total === currentTotals[idx - 1].total
