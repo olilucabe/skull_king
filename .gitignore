@@ -1,0 +1,39 @@
+# Base de datos (datos privados de partidas)
+*.db
+*.db-shm
+*.db-wal
+
+# Variables de entorno (claves secretas, configuración de servidor)
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+ENV/
+
+# Distribución / empaquetado
+*.zip
+*.tar.gz
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

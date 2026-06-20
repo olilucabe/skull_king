@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Nueva partida{% endblock %}
+{% block content %}
+    <h1>Nueva partida</h1>
+
+    <form method="post" class="card" id="new-game-form">
+        <h2>Jugadores</h2>
+
+        {% if groups %}
+            <p class="muted">Toca un grupo para seleccionar a sus jugadores directamente.</p>
+            <div class="group-grid">
+                {% for g in groups %}
+                    <button type="button" class="group-chip" data-group-id="{{ g['id'] }}">
+                        <span class="group-chip-emoji">{{ g['emoji'] }}</span>
+                        {{ g['name'] }}
+                    </button>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if players %}
+            <p class="muted">O selecciona jugadores individualmente.</p>
+            <div class="checkbox-grid">
+                {% for p in players %}
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="player_ids" value="{{ p['id'] }}">
+                        <span class="player-color-dot" style="background-color: {{ p['color'] }}"></span>
+                        {{ p['name'] }}
+                    </label>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>Todavía no hay jugadores guardados, añade sus nombres abajo.</p>
+        {% endif %}
+
+        <label class="field">
+            Añadir jugadores nuevos (separados por comas)
+            <input type="text" name="new_players" placeholder="Ej: Ana, Luis, Marta">
+        </label>
+
+        <h2>Configuración</h2>
+        <label class="field">
+            Número de rondas
+            <input type="number" name="num_rounds" value="10" min="1" max="20">
+        </label>
+
+        <label class="checkbox-item">
+            <input type="checkbox" name="expansion">
+            Jugamos con la expansión
+        </label>
+
+        <button type="submit" class="btn">Crear partida</button>
+    </form>
+
+    <script>
+        const GROUP_PLAYER_IDS = {{ group_player_ids | tojson }};
+        document.querySelectorAll('.group-chip').forEach((chip) => {
+            chip.addEventListener('click', () => {
+                const groupId = chip.dataset.groupId;
+                const memberIds = (GROUP_PLAYER_IDS[groupId] || []).map(String);
+                document.querySelectorAll('#new-game-form input[name="player_ids"]').forEach((checkbox) => {
+                    checkbox.checked = memberIds.includes(checkbox.value);
+                });
+                document.querySelectorAll('.group-chip').forEach((c) => c.classList.toggle('active', c === chip));
+            });
+        });
+    </script>
+{% endblock %}

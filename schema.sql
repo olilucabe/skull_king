@@ -1,0 +1,46 @@
+CREATE TABLE IF NOT EXISTS players (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    color TEXT NOT NULL DEFAULT '#2563eb'
+);
+
+CREATE TABLE IF NOT EXISTS groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    emoji TEXT NOT NULL DEFAULT '🏴‍☠️'
+);
+
+CREATE TABLE IF NOT EXISTS group_players (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    UNIQUE(group_id, player_id)
+);
+
+CREATE TABLE IF NOT EXISTS games (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    num_rounds INTEGER NOT NULL DEFAULT 10,
+    expansion INTEGER NOT NULL DEFAULT 0,
+    finished INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS game_players (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL REFERENCES players(id),
+    UNIQUE(game_id, player_id)
+);
+
+CREATE TABLE IF NOT EXISTS round_scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL REFERENCES players(id),
+    round_number INTEGER NOT NULL,
+    bid INTEGER NOT NULL,
+    tricks_won INTEGER NOT NULL,
+    bonus_points INTEGER NOT NULL DEFAULT 0,
+    voided INTEGER NOT NULL DEFAULT 0,
+    score INTEGER NOT NULL,
+    UNIQUE(game_id, player_id, round_number)
+);

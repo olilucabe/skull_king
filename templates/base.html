@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Skull King{% endblock %} - Marcador</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    {% block header %}
+    <header class="topbar">
+        <a href="{{ url_for('index') }}" class="brand">🏴‍☠️ Skull King</a>
+        <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="nav-menu">☰</button>
+        <nav class="nav" id="nav-menu">
+            <div class="nav-inner">
+                <a href="{{ url_for('index') }}">Inicio</a>
+                <a href="{{ url_for('new_game') }}">Nueva partida</a>
+                <a href="{{ url_for('history') }}">Historial</a>
+                <a href="{{ url_for('stats') }}">Estadísticas</a>
+                <a href="{{ url_for('players') }}">Jugadores</a>
+            </div>
+        </nav>
+    </header>
+    <script>
+        (function () {
+            var toggle = document.getElementById('nav-toggle');
+            var menu = document.getElementById('nav-menu');
+            toggle.addEventListener('click', function () {
+                var open = menu.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', String(open));
+            });
+        })();
+    </script>
+    {% endblock %}
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flashes">
+                    {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

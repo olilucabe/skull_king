@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Jugadores{% endblock %}
+{% block content %}
+    <h1>Jugadores</h1>
+
+    <section class="card">
+        <form method="post" class="inline-form-row">
+            <input type="text" name="name" placeholder="Nombre del jugador" required>
+            <button type="submit" class="btn">Añadir</button>
+        </form>
+    </section>
+
+    <section class="card">
+        {% if players %}
+            <table class="simple-table">
+                <thead>
+                    <tr><th>Nombre</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for p in players %}
+                        <tr>
+                            <td>
+                                <button type="button" class="color-dot-btn" data-player-id="{{ p['id'] }}" data-color="{{ p['color'] }}" style="background-color: {{ p['color'] }}"></button>
+                                {{ p['name'] }}
+                            </td>
+                            <td class="actions">
+                                <form method="post" action="{{ url_for('delete_player', player_id=p['id']) }}" onsubmit="return confirm('¿Borrar a {{ p['name'] }}?');" class="inline-form">
+                                    <button type="submit" class="btn btn-small btn-danger">Borrar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No hay jugadores todavía.</p>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <h2>Grupos</h2>
+        <p class="muted">Crea grupos habituales para entrar directamente con ellos al crear una partida.</p>
+
+        {% for g in groups %}
+            <details class="group-card">
+                <summary class="group-summary">
+                    <span class="group-chip-emoji">{{ g['emoji'] }}</span>
+                    <span class="group-name">{{ g['name'] }}</span>
+                    <span class="muted">{{ group_members[g['id']] | length }} jugador{{ 'es' if group_members[g['id']] | length != 1 else '' }}</span>
+                </summary>
+                <form method="post" action="{{ url_for('update_group', group_id=g['id']) }}">
+                    <label class="field">
+                        Nombre
+                        <input type="text" name="name" value="{{ g['name'] }}" required>
+                    </label>
+                    <label class="field emoji-field">
+                        Emoji
+                        <input type="text" name="emoji" value="{{ g['emoji'] }}" class="emoji-input" maxlength="8">
+                    </label>
+                    <div class="checkbox-grid">
+                        {% for p in players %}
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="player_ids" value="{{ p['id'] }}" {% if p['id'] in group_member_ids[g['id']] %}checked{% endif %}>
+                                <span class="player-color-dot" style="background-color: {{ p['color'] }}"></span>
+                                {{ p['name'] }}
+                            </label>
+                        {% endfor %}
+                    </div>
+                    <div class="actions">
+                        <button type="submit" class="btn btn-small">Guardar</button>
+                    </div>
+                </form>
+                <form method="post" action="{{ url_for('delete_group', group_id=g['id']) }}" onsubmit="return confirm('¿Borrar el grupo {{ g['name'] }}?');" class="inline-form">
+                    <button type="submit" class="btn btn-small btn-danger">Borrar grupo</button>
+                </form>
+            </details>
+        {% endfor %}
+
+        <details class="group-card">
+            <summary class="group-summary">+ Crear grupo</summary>
+            <form method="post" action="{{ url_for('create_group') }}">
+                <label class="field">
+                    Nombre
+                    <input type="text" name="name" placeholder="Ej: Noche de juegos" required>
+                </label>
+                <label class="field emoji-field">
+                    Emoji
+                    <input type="text" name="emoji" value="🏴‍☠️" class="emoji-input" maxlength="8">
+                </label>
+                <div class="checkbox-grid">
+                    {% for p in players %}
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="player_ids" value="{{ p['id'] }}">
+                            <span class="player-color-dot" style="background-color: {{ p['color'] }}"></span>
+                            {{ p['name'] }}
+                        </label>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn">Crear grupo</button>
+            </form>
+        </details>
+    </section>
+
+    <script src="{{ url_for('static', filename='js/colorpicker.js') }}"></script>
+    <script>
+        const PALETTE = {{ palette | tojson }};
+        document.querySelectorAll('.color-dot-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const playerId = btn.dataset.playerId;
+                SkullKingColors.openPicker(btn, PALETTE, btn.dataset.color, async (color) => {
+                    btn.dataset.color = color;
+                    btn.style.backgroundColor = color;
+                    await fetch(`/players/${playerId}/color`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ color }),
+                    });
+                });
+            });
+        });
+    </script>
+{% endblock %}

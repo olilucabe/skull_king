@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+    <h1>Bienvenido al marcador de Skull King</h1>
+
+    <section class="card">
+        <h2>Partidas en curso</h2>
+        {% if active_games %}
+            <div class="game-list">
+                {% for g in active_games %}
+                    <div class="game-row">
+                        <div class="game-row-info">
+                            <div class="game-row-meta">{{ g['num_players'] }} jugadores · {{ g['num_rounds'] }} rondas{% if g['expansion'] %} · Expansión{% endif %}</div>
+                            <div class="game-row-date">{{ g['created_at'] }}</div>
+                        </div>
+                        <div class="game-row-actions">
+                            <a class="btn btn-small" href="{{ url_for('game_view', game_id=g['id']) }}">Continuar</a>
+                            <form method="post" action="{{ url_for('delete_game', game_id=g['id']) }}" onsubmit="return confirm('¿Borrar esta partida?');" class="inline-form">
+                                <button type="submit" class="btn btn-small btn-danger">Borrar</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>No hay partidas en curso.</p>
+        {% endif %}
+        <a class="btn" href="{{ url_for('new_game') }}">+ Nueva partida</a>
+    </section>
+
+    <section class="card">
+        <h2>Jugadores registrados</h2>
+        {% if players %}
+            <ul class="pill-list">
+                {% for p in players %}
+                    <li class="pill">{{ p['name'] }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Todavía no hay jugadores. Añádelos al crear una partida o desde la sección de Jugadores.</p>
+        {% endif %}
+        <a class="btn btn-secondary" href="{{ url_for('players') }}">Gestionar jugadores</a>
+    </section>
+{% endblock %}

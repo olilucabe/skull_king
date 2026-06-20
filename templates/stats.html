@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Estadísticas{% endblock %}
+{% block content %}
+    <h1>Estadísticas de jugadores</h1>
+
+    {% if stats %}
+        <section class="card">
+            <table class="simple-table">
+                <thead>
+                    <tr>
+                        <th>Jugador</th>
+                        <th>Partidas</th>
+                        <th>Victorias</th>
+                        <th>Puntos totales</th>
+                        <th>Media por partida</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in stats %}
+                        <tr>
+                            <td>{{ s.name }}</td>
+                            <td>{{ s.games_played }}</td>
+                            <td>{{ s.wins }}</td>
+                            <td>{{ s.total_score }}</td>
+                            <td>{{ s.avg_score }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% else %}
+        <p>Todavía no hay datos suficientes. Termina alguna partida para ver estadísticas.</p>
+    {% endif %}
+{% endblock %}
