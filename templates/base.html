@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Skull King{% endblock %} - Marcador</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 </head>
 <body>
     {% block header %}
@@ -13,11 +14,12 @@
         <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="nav-menu">☰</button>
         <nav class="nav" id="nav-menu">
             <div class="nav-inner">
-                <a href="{{ url_for('index') }}">Inicio</a>
-                <a href="{{ url_for('new_game') }}">Nueva partida</a>
-                <a href="{{ url_for('history') }}">Historial</a>
-                <a href="{{ url_for('stats') }}">Estadísticas</a>
-                <a href="{{ url_for('players') }}">Jugadores</a>
+                <a href="{{ url_for('index') }}" data-i18n="nav_home">Inicio</a>
+                <a href="{{ url_for('new_game') }}" data-i18n="nav_new_game">Nueva partida</a>
+                <a href="{{ url_for('history') }}" data-i18n="nav_history">Historial</a>
+                <a href="{{ url_for('stats') }}" data-i18n="nav_stats">Estadísticas</a>
+                <a href="{{ url_for('players') }}" data-i18n="nav_players">Jugadores</a>
+                <button type="button" class="lang-toggle">ES</button>
             </div>
         </nav>
     </header>

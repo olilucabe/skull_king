@@ -1,35 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Inicio{% endblock %}
 {% block content %}
-    <h1>Bienvenido al marcador de Skull King</h1>
+    <h1 data-i18n="page_home_title">Bienvenido al marcador de Skull King</h1>
 
     <section class="card">
-        <h2>Partidas en curso</h2>
+        <h2 data-i18n="active_games">Partidas en curso</h2>
         {% if active_games %}
             <div class="game-list">
                 {% for g in active_games %}
                     <div class="game-row">
                         <div class="game-row-info">
-                            <div class="game-row-meta">{{ g['num_players'] }} jugadores · {{ g['num_rounds'] }} rondas{% if g['expansion'] %} · Expansión{% endif %}</div>
+                            <div class="game-row-meta"
+                                 data-i18n-meta="game_meta"
+                                 data-players="{{ g['num_players'] }}"
+                                 data-rounds="{{ g['num_rounds'] }}"
+                                 data-expansion="{{ g['expansion'] }}">
+                                {{ g['num_players'] }} jugadores · {{ g['num_rounds'] }} rondas{% if g['expansion'] %} · Expansión{% endif %}
+                            </div>
                             <div class="game-row-date">{{ g['created_at'] }}</div>
                         </div>
                         <div class="game-row-actions">
-                            <a class="btn btn-small" href="{{ url_for('game_view', game_id=g['id']) }}">Continuar</a>
+                            <a class="btn btn-small" href="{{ url_for('game_view', game_id=g['id']) }}" data-i18n="continue_btn">Continuar</a>
                             <form method="post" action="{{ url_for('delete_game', game_id=g['id']) }}" onsubmit="return confirm('¿Borrar esta partida?');" class="inline-form">
-                                <button type="submit" class="btn btn-small btn-danger">Borrar</button>
+                                <button type="submit" class="btn btn-small btn-danger" data-i18n="delete_btn">Borrar</button>
                             </form>
                         </div>
                     </div>
                 {% endfor %}
             </div>
         {% else %}
-            <p>No hay partidas en curso.</p>
+            <p data-i18n="no_active_games">No hay partidas en curso.</p>
         {% endif %}
-        <a class="btn" href="{{ url_for('new_game') }}">+ Nueva partida</a>
+        <a class="btn" href="{{ url_for('new_game') }}" data-i18n="new_game_btn">+ Nueva partida</a>
     </section>
 
     <section class="card">
-        <h2>Jugadores registrados</h2>
+        <h2 data-i18n="registered_players">Jugadores registrados</h2>
         {% if players %}
             <ul class="pill-list">
                 {% for p in players %}
@@ -37,8 +43,8 @@
                 {% endfor %}
             </ul>
         {% else %}
-            <p>Todavía no hay jugadores. Añádelos al crear una partida o desde la sección de Jugadores.</p>
+            <p data-i18n="no_players_home">Todavía no hay jugadores. Añádelos al crear una partida o desde la sección de Jugadores.</p>
         {% endif %}
-        <a class="btn btn-secondary" href="{{ url_for('players') }}">Gestionar jugadores</a>
+        <a class="btn btn-secondary" href="{{ url_for('players') }}" data-i18n="manage_players">Gestionar jugadores</a>
     </section>
 {% endblock %}

@@ -1,6 +1,8 @@
 (function () {
     const root = document.getElementById('game-app');
     const gameId = root.dataset.gameId;
+    const t = (key, vars) => window.SkullKingI18n ? window.SkullKingI18n.t(key, vars) : key;
+    window.addEventListener('langchange', render);
 
     function colorDot(color) {
         const dot = document.createElement('span');
@@ -183,18 +185,18 @@
         if (gameData.finished) {
             const banner = document.createElement('div');
             banner.className = 'finished-banner';
-            banner.textContent = '🏁 Partida finalizada';
+            banner.textContent = t('game_finished');
             root.appendChild(banner);
         }
 
         const tabs = document.createElement('div');
         tabs.className = 'view-tabs';
-        tabs.appendChild(button('Ronda actual', () => {
+        tabs.appendChild(button(t('current_round_tab'), () => {
             flushAutosave();
             currentView = 'round';
             render();
         }, 'view-tab' + (currentView === 'round' ? ' active' : '')));
-        tabs.appendChild(button('Clasificación', () => {
+        tabs.appendChild(button(t('standings_tab'), () => {
             flushAutosave();
             currentView = 'standings';
             render();
@@ -209,7 +211,7 @@
                 card.className = 'card';
                 const p = document.createElement('p');
                 p.className = 'muted';
-                p.textContent = 'Todavía no hay puntuaciones registradas.';
+                p.textContent = t('no_scores_yet');
                 card.appendChild(p);
                 root.appendChild(card);
                 return;
@@ -234,7 +236,7 @@
 
         const nav = document.createElement('div');
         nav.className = 'round-nav';
-        const prevBtn = button('‹ Anterior', () => {
+        const prevBtn = button(t('prev_round_btn'), () => {
             if (currentRound > 1) {
                 flushAutosave();
                 currentRound--;
@@ -244,8 +246,8 @@
         });
         const title = document.createElement('div');
         title.className = 'round-title';
-        title.textContent = `Ronda ${currentRound} de ${gameData.num_rounds}`;
-        const nextBtn = button('Siguiente ›', () => {
+        title.textContent = t('round_N_of_M', { n: currentRound, total: gameData.num_rounds });
+        const nextBtn = button(t('next_round_btn'), () => {
             if (currentRound < gameData.num_rounds) {
                 flushAutosave();
                 currentRound++;
@@ -271,9 +273,9 @@
         const actions = document.createElement('div');
         actions.className = 'game-actions';
         if (gameData.finished) {
-            actions.appendChild(button('Reabrir partida', reopenGame, 'btn btn-secondary'));
+            actions.appendChild(button(t('reopen_game'), reopenGame, 'btn btn-secondary'));
         } else if (currentRound === gameData.num_rounds) {
-            actions.appendChild(button('Finalizar partida', finishGame, 'btn'));
+            actions.appendChild(button(t('finish_game'), finishGame, 'btn'));
         }
         root.appendChild(actions);
     }
@@ -298,12 +300,7 @@
 
         function setSaveStatus(state) {
             statusEl.className = 'save-status' + (state ? ' ' + state : '');
-            statusEl.textContent = {
-                pending: 'Cambios sin guardar…',
-                saving: 'Guardando…',
-                saved: 'Guardado ✓',
-                error: 'Error al guardar',
-            }[state] || '';
+            statusEl.textContent = state ? t('save_' + state) : '';
         }
 
         async function persist() {
@@ -353,7 +350,7 @@
 
         const bidsTitle = document.createElement('h3');
         bidsTitle.className = 'phase-title';
-        bidsTitle.textContent = 'Paso 1 de 2 · Apuestas';
+        bidsTitle.textContent = t('step1_title');
         bidsSection.appendChild(bidsTitle);
 
         // --- Step 2: Tricks won + bonuses -------------------------------------
@@ -362,10 +359,10 @@
 
         const tricksTitle = document.createElement('h3');
         tricksTitle.className = 'phase-title';
-        tricksTitle.textContent = 'Paso 2 de 2 · Bazas conseguidas y bonus';
+        tricksTitle.textContent = t('step2_title');
         tricksSection.appendChild(tricksTitle);
 
-        const backBtn = button('← Volver a apuestas', () => {
+        const backBtn = button(t('back_to_bids'), () => {
             roundPhase = 'bids';
             updatePhaseVisibility();
             scrollToTop();
@@ -393,7 +390,7 @@
         function updateBidCounter() {
             const totalBid = rowsData.reduce((s, r) => s + r.getBid(), 0);
             const available = roundNumber - (krakenPlayed ? 1 : 0);
-            bidCounterEl.textContent = `Apuestas: ${totalBid} / ${available}`;
+            bidCounterEl.textContent = t('bids_counter', { total: totalBid, available });
             bidCounterEl.className = 'bid-counter'
                 + (totalBid > available ? ' over' : totalBid === available ? ' exact' : '');
         }
@@ -422,7 +419,7 @@
         const groupBreaks = [];
         presets.push(...BASE_BONUSES);
         if (gameData.expansion) {
-            groupBreaks.push({ index: presets.length, title: 'Bonus de expansión' });
+            groupBreaks.push({ index: presets.length, title: t('expansion_bonuses') });
             presets.push(...EXPANSION_BONUSES);
         }
         const roundBonusCounts = presets.map(() => 0);
@@ -458,7 +455,7 @@
             bidGroup.className = 'field-group';
             const bidLabel = document.createElement('div');
             bidLabel.className = 'field-label';
-            bidLabel.textContent = 'Apuesta';
+            bidLabel.textContent = t('bid_label');
             const bidRow = createCounter(0, roundNumber, entry.bid);
             bidGroup.append(bidLabel, bidRow.element);
             bidCard.appendChild(bidGroup);
@@ -513,7 +510,7 @@
             tricksGroup.className = 'field-group';
             const tricksLabel = document.createElement('div');
             tricksLabel.className = 'field-label';
-            tricksLabel.textContent = 'Bazas conseguidas';
+            tricksLabel.textContent = t('tricks_label');
             const tricksRow = createCounter(0, roundNumber, entry.tricks);
             tricksRows.push(tricksRow);
             tricksGroup.append(tricksLabel, tricksRow.element);
@@ -546,7 +543,7 @@
 
             function refreshBonusToggle() {
                 const sign = bonusTotal > 0 ? '+' : '';
-                bonusToggleLabel.textContent = `Bonus: ${sign}${bonusTotal}`;
+                bonusToggleLabel.textContent = t('bonus_label', { sign, total: bonusTotal });
                 bonusToggle.classList.toggle('active-bonus', bonusTotal !== 0);
             }
             refreshBonusToggle();
@@ -604,7 +601,7 @@
             const resetBtn = document.createElement('button');
             resetBtn.type = 'button';
             resetBtn.className = 'bonus-reset';
-            resetBtn.textContent = 'Reiniciar bonus';
+            resetBtn.textContent = t('reset_bonus');
             resetBtn.addEventListener('click', () => {
                 bonusTotal = 0;
                 bonusPanel.querySelectorAll('.bonus-option').forEach((btn, idx) => {
@@ -647,7 +644,7 @@
                 scoreSpan.classList.remove('positive', 'negative');
                 if (score > 0) scoreSpan.classList.add('positive');
                 else if (score < 0) scoreSpan.classList.add('negative');
-                bidSummarySpan.textContent = `Apuesta: ${bid}`;
+                bidSummarySpan.textContent = t('bid_summary', { n: bid });
             }
 
             bidRow.onChange(updatePreview);
@@ -684,7 +681,7 @@
         }
         updateTricksLimits();
 
-        const nextBtn = button('Siguiente: bazas y bonus →', () => {
+        const nextBtn = button(t('next_tricks'), () => {
             roundPhase = 'tricks';
             updatePhaseVisibility();
             scrollToTop();
@@ -692,7 +689,7 @@
         bidsSection.appendChild(nextBtn);
 
         if (currentRound < gameData.num_rounds) {
-            const nextRoundBtn = button('Siguiente ronda ›', () => {
+            const nextRoundBtn = button(t('next_round'), () => {
                 flushAutosave();
                 currentRound++;
                 render();
@@ -716,14 +713,14 @@
 
     function renderTotals(container) {
         const title = document.createElement('h2');
-        title.textContent = 'Marcador';
+        title.textContent = t('scoreboard_title');
         container.appendChild(title);
 
         const hint = document.createElement('p');
         hint.className = 'muted';
         hint.style.fontSize = '0.8rem';
         hint.style.margin = '0 0 0.5rem';
-        hint.textContent = 'Toca una ronda para ver el detalle.';
+        hint.textContent = t('tap_round_hint');
         container.appendChild(hint);
 
         const wrapper = document.createElement('div');
@@ -734,7 +731,7 @@
 
         const thead = document.createElement('thead');
         const headRow = document.createElement('tr');
-        headRow.appendChild(th('Ronda'));
+        headRow.appendChild(th(t('round_col')));
         gameData.players.forEach((p) => {
             const cell = th(p.name);
             cell.prepend(colorDot(p.color));
@@ -777,10 +774,10 @@
                 const entry = roundScores ? roundScores[String(p.id)] : null;
                 const line = document.createElement('div');
                 if (entry) {
-                    const bonusText = entry.bonus ? `, bonus ${entry.bonus > 0 ? '+' : ''}${entry.bonus}` : '';
-                    line.textContent = `${p.name}: apuesta ${entry.bid}, bazas ${entry.tricks}${bonusText}${entry.voided ? ' (anulada)' : ''}`;
+                    const bonusPart = entry.bonus ? `, ${t('detail_bonus')} ${entry.bonus > 0 ? '+' : ''}${entry.bonus}` : '';
+                    line.textContent = `${p.name}: ${t('detail_bid')} ${entry.bid}, ${t('detail_tricks')} ${entry.tricks}${bonusPart}${entry.voided ? ' ' + t('detail_voided') : ''}`;
                 } else {
-                    line.textContent = `${p.name}: sin datos`;
+                    line.textContent = `${p.name}: ${t('no_data')}`;
                 }
                 detail.appendChild(line);
             });
@@ -807,7 +804,7 @@
 
         const totalRow = document.createElement('tr');
         totalRow.className = 'total-row';
-        totalRow.appendChild(td('Total'));
+        totalRow.appendChild(td(t('total_row')));
         gameData.players.forEach((p) => totalRow.appendChild(td(String(totals[p.id]))));
         tbody.appendChild(totalRow);
 
@@ -818,7 +815,7 @@
 
     function renderProgressChart(container, cumulative, lastPlayedRound) {
         const title = document.createElement('h2');
-        title.textContent = 'Progreso por ronda';
+        title.textContent = t('progress_title');
         container.appendChild(title);
 
         const pointCount = lastPlayedRound + 1; // round 0 (start) .. lastPlayedRound
@@ -907,7 +904,7 @@
 
     function renderStandings(container, cumulative, lastPlayedRound) {
         const title = document.createElement('h2');
-        title.textContent = 'Clasificación';
+        title.textContent = t('standings_title');
         container.appendChild(title);
 
         const currentTotals = gameData.players.map((p) => ({

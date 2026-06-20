@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Estadísticas{% endblock %}
 {% block content %}
-    <h1>Estadísticas de jugadores</h1>
+    <h1 data-i18n="page_stats">Estadísticas de jugadores</h1>
 
     {% if stats %}
         <section class="card">
             <table class="simple-table">
                 <thead>
                     <tr>
-                        <th>Jugador</th>
-                        <th>Partidas</th>
-                        <th>Victorias</th>
-                        <th>Puntos totales</th>
-                        <th>Media por partida</th>
+                        <th data-i18n="player_col">Jugador</th>
+                        <th data-i18n="games_col">Partidas</th>
+                        <th data-i18n="wins_col">Victorias</th>
+                        <th data-i18n="total_points_col">Puntos totales</th>
+                        <th data-i18n="avg_col">Media por partida</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -29,6 +29,6 @@
             </table>
         </section>
     {% else %}
-        <p>Todavía no hay datos suficientes. Termina alguna partida para ver estadísticas.</p>
+        <p data-i18n="no_stats">Todavía no hay datos suficientes. Termina alguna partida para ver estadísticas.</p>
     {% endif %}
 {% endblock %}

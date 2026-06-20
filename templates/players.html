@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Jugadores{% endblock %}
 {% block content %}
-    <h1>Jugadores</h1>
+    <h1 data-i18n="page_players">Jugadores</h1>
 
     <section class="card">
         <form method="post" class="inline-form-row">
-            <input type="text" name="name" placeholder="Nombre del jugador" required>
-            <button type="submit" class="btn">Añadir</button>
+            <input type="text" name="name" data-i18n-ph="player_name_ph" placeholder="Nombre del jugador" required>
+            <button type="submit" class="btn" data-i18n="add_btn">Añadir</button>
         </form>
     </section>
 
@@ -14,7 +14,7 @@
         {% if players %}
             <table class="simple-table">
                 <thead>
-                    <tr><th>Nombre</th><th></th></tr>
+                    <tr><th data-i18n="name_col">Nombre</th><th></th></tr>
                 </thead>
                 <tbody>
                     {% for p in players %}
@@ -25,7 +25,7 @@
                             </td>
                             <td class="actions">
                                 <form method="post" action="{{ url_for('delete_player', player_id=p['id']) }}" onsubmit="return confirm('¿Borrar a {{ p['name'] }}?');" class="inline-form">
-                                    <button type="submit" class="btn btn-small btn-danger">Borrar</button>
+                                    <button type="submit" class="btn btn-small btn-danger" data-i18n="delete_btn">Borrar</button>
                                 </form>
                             </td>
                         </tr>
@@ -33,24 +33,28 @@
                 </tbody>
             </table>
         {% else %}
-            <p>No hay jugadores todavía.</p>
+            <p data-i18n="no_players">No hay jugadores todavía.</p>
         {% endif %}
     </section>
 
     <section class="card">
-        <h2>Grupos</h2>
-        <p class="muted">Crea grupos habituales para entrar directamente con ellos al crear una partida.</p>
+        <h2 data-i18n="groups_section">Grupos</h2>
+        <p class="muted" data-i18n="groups_hint">Crea grupos habituales para entrar directamente con ellos al crear una partida.</p>
 
         {% for g in groups %}
             <details class="group-card">
                 <summary class="group-summary">
                     <span class="group-chip-emoji">{{ g['emoji'] }}</span>
                     <span class="group-name">{{ g['name'] }}</span>
-                    <span class="muted">{{ group_members[g['id']] | length }} jugador{{ 'es' if group_members[g['id']] | length != 1 else '' }}</span>
+                    <span class="muted"
+                          data-i18n-meta="group_players"
+                          data-count="{{ group_members[g['id']] | length }}">
+                        {{ group_members[g['id']] | length }} jugador{{ 'es' if group_members[g['id']] | length != 1 else '' }}
+                    </span>
                 </summary>
                 <form method="post" action="{{ url_for('update_group', group_id=g['id']) }}">
                     <label class="field">
-                        Nombre
+                        <span data-i18n="name_field">Nombre</span>
                         <input type="text" name="name" value="{{ g['name'] }}" required>
                     </label>
                     <label class="field emoji-field">
@@ -67,21 +71,21 @@
                         {% endfor %}
                     </div>
                     <div class="actions">
-                        <button type="submit" class="btn btn-small">Guardar</button>
+                        <button type="submit" class="btn btn-small" data-i18n="save_btn">Guardar</button>
                     </div>
                 </form>
                 <form method="post" action="{{ url_for('delete_group', group_id=g['id']) }}" onsubmit="return confirm('¿Borrar el grupo {{ g['name'] }}?');" class="inline-form">
-                    <button type="submit" class="btn btn-small btn-danger">Borrar grupo</button>
+                    <button type="submit" class="btn btn-small btn-danger" data-i18n="delete_group_btn">Borrar grupo</button>
                 </form>
             </details>
         {% endfor %}
 
         <details class="group-card">
-            <summary class="group-summary">+ Crear grupo</summary>
+            <summary class="group-summary" data-i18n="create_group_summary">+ Crear grupo</summary>
             <form method="post" action="{{ url_for('create_group') }}">
                 <label class="field">
-                    Nombre
-                    <input type="text" name="name" placeholder="Ej: Noche de juegos" required>
+                    <span data-i18n="name_field">Nombre</span>
+                    <input type="text" name="name" data-i18n-ph="group_name_ph" placeholder="Ej: Noche de juegos" required>
                 </label>
                 <label class="field emoji-field">
                     Emoji
@@ -96,7 +100,7 @@
                         </label>
                     {% endfor %}
                 </div>
-                <button type="submit" class="btn">Crear grupo</button>
+                <button type="submit" class="btn" data-i18n="create_group_btn">Crear grupo</button>
             </form>
         </details>
     </section>

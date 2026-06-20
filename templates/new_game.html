@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Nueva partida{% endblock %}
 {% block content %}
-    <h1>Nueva partida</h1>
+    <h1 data-i18n="page_new_game">Nueva partida</h1>
 
     <form method="post" class="card" id="new-game-form">
-        <h2>Jugadores</h2>
+        <h2 data-i18n="players_section">Jugadores</h2>
 
         {% if groups %}
-            <p class="muted">Toca un grupo para seleccionar a sus jugadores directamente.</p>
+            <p class="muted" data-i18n="tap_group_hint">Toca un grupo para seleccionar a sus jugadores directamente.</p>
             <div class="group-grid">
                 {% for g in groups %}
                     <button type="button" class="group-chip" data-group-id="{{ g['id'] }}">
@@ -19,7 +19,7 @@
         {% endif %}
 
         {% if players %}
-            <p class="muted">O selecciona jugadores individualmente.</p>
+            <p class="muted" data-i18n="select_individually_hint">O selecciona jugadores individualmente.</p>
             <div class="checkbox-grid">
                 {% for p in players %}
                     <label class="checkbox-item">
@@ -30,26 +30,26 @@
                 {% endfor %}
             </div>
         {% else %}
-            <p>Todavía no hay jugadores guardados, añade sus nombres abajo.</p>
+            <p data-i18n="no_saved_players">Todavía no hay jugadores guardados, añade sus nombres abajo.</p>
         {% endif %}
 
         <label class="field">
-            Añadir jugadores nuevos (separados por comas)
-            <input type="text" name="new_players" placeholder="Ej: Ana, Luis, Marta">
+            <span data-i18n="add_new_players_label">Añadir jugadores nuevos (separados por comas)</span>
+            <input type="text" name="new_players" data-i18n-ph="add_new_players_ph" placeholder="Ej: Ana, Luis, Marta">
         </label>
 
-        <h2>Configuración</h2>
+        <h2 data-i18n="settings_section">Configuración</h2>
         <label class="field">
-            Número de rondas
+            <span data-i18n="num_rounds_label">Número de rondas</span>
             <input type="number" name="num_rounds" value="10" min="1" max="20">
         </label>
 
         <label class="checkbox-item">
             <input type="checkbox" name="expansion">
-            Jugamos con la expansión
+            <span data-i18n="expansion_checkbox">Jugamos con la expansión</span>
         </label>
 
-        <button type="submit" class="btn">Crear partida</button>
+        <button type="submit" class="btn" data-i18n="create_game_btn">Crear partida</button>
     </form>
 
     <script>

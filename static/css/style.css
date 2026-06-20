@@ -124,6 +124,24 @@ body {
     right: 0;
 }
 
+.lang-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 0.25rem 0.5rem;
+    transition: background-color 0.2s var(--ease-fast), color 0.2s;
+}
+
+.lang-toggle:hover {
+    background: var(--surface-alt);
+    color: var(--text);
+}
+
 .container {
     max-width: 900px;
     margin: 0 auto;

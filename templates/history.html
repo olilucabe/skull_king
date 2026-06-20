@@ -1,19 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Historial{% endblock %}
 {% block content %}
-    <h1>Historial de partidas</h1>
+    <h1 data-i18n="page_history">Historial de partidas</h1>
 
     {% if games %}
         {% for entry in games %}
             <section class="card">
                 <h2>
                     Partida #{{ entry.game['id'] }} — {{ entry.game['created_at'] }}
-                    {% if entry.game['expansion'] %}<span class="badge">Expansión</span>{% endif %}
+                    {% if entry.game['expansion'] %}<span class="badge" data-i18n="expansion_badge">Expansión</span>{% endif %}
                 </h2>
-                <p>{{ entry.game['num_rounds'] }} rondas</p>
+                <p data-i18n-meta="game_rounds" data-rounds="{{ entry.game['num_rounds'] }}">{{ entry.game['num_rounds'] }} rondas</p>
                 <table class="simple-table">
                     <thead>
-                        <tr><th>Jugador</th><th>Puntos totales</th></tr>
+                        <tr>
+                            <th data-i18n="player_col">Jugador</th>
+                            <th data-i18n="total_points_col">Puntos totales</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {% for p in entry.players %}
@@ -24,10 +27,10 @@
                         {% endfor %}
                     </tbody>
                 </table>
-                <a class="btn btn-small btn-secondary" href="{{ url_for('game_view', game_id=entry.game['id']) }}">Ver detalle</a>
+                <a class="btn btn-small btn-secondary" href="{{ url_for('game_view', game_id=entry.game['id']) }}" data-i18n="view_details">Ver detalle</a>
             </section>
         {% endfor %}
     {% else %}
-        <p>Todavía no hay partidas finalizadas.</p>
+        <p data-i18n="no_finished_games">Todavía no hay partidas finalizadas.</p>
     {% endif %}
 {% endblock %}
