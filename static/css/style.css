@@ -365,8 +365,19 @@ input:focus, select:focus {
 
 .game-row-actions {
     display: flex;
+    align-items: stretch;
     gap: 0.5rem;
     flex-shrink: 0;
+}
+
+.game-row-actions .inline-form {
+    display: flex;
+}
+
+.game-row-actions .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 @media (max-width: 480px) {
