@@ -1008,12 +1008,12 @@
         const note = document.createElement('p');
         note.className = 'muted';
         note.style.fontSize = '0.85rem';
-        note.textContent = `Después de la ronda ${lastPlayedRound} de ${gameData.num_rounds}.`;
+        note.textContent = t('standings_after_round', { n: lastPlayedRound, total: gameData.num_rounds });
         container.appendChild(note);
     }
 
     async function finishGame() {
-        if (!confirm('¿Finalizar la partida? Podrás reabrirla después si lo necesitas.')) return;
+        if (!confirm(t('confirm_finish_game'))) return;
         flushAutosave();
         await fetch(`/api/game/${gameId}/finish`, { method: 'POST' });
         await loadGame();

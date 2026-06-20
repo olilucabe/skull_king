@@ -7,7 +7,7 @@
         {% for entry in games %}
             <section class="card">
                 <h2>
-                    Partida #{{ entry.game['id'] }} — {{ entry.game['created_at'] }}
+                    <span data-i18n="game_label">Partida</span> #{{ entry.game['id'] }} — {{ entry.game['created_at'] }}
                     {% if entry.game['expansion'] %}<span class="badge" data-i18n="expansion_badge">Expansión</span>{% endif %}
                 </h2>
                 <p data-i18n-meta="game_rounds" data-rounds="{{ entry.game['num_rounds'] }}">{{ entry.game['num_rounds'] }} rondas</p>

@@ -24,7 +24,7 @@
                                 {{ p['name'] }}
                             </td>
                             <td class="actions">
-                                <form method="post" action="{{ url_for('delete_player', player_id=p['id']) }}" onsubmit="return confirm('¿Borrar a {{ p['name'] }}?');" class="inline-form">
+                                <form method="post" action="{{ url_for('delete_player', player_id=p['id']) }}" data-confirm-key="confirm_delete_player" data-confirm-name="{{ p['name'] }}" class="inline-form">
                                     <button type="submit" class="btn btn-small btn-danger" data-i18n="delete_btn">Borrar</button>
                                 </form>
                             </td>
@@ -74,7 +74,7 @@
                         <button type="submit" class="btn btn-small" data-i18n="save_btn">Guardar</button>
                     </div>
                 </form>
-                <form method="post" action="{{ url_for('delete_group', group_id=g['id']) }}" onsubmit="return confirm('¿Borrar el grupo {{ g['name'] }}?');" class="inline-form">
+                <form method="post" action="{{ url_for('delete_group', group_id=g['id']) }}" data-confirm-key="confirm_delete_group" data-confirm-name="{{ g['name'] }}" class="inline-form">
                     <button type="submit" class="btn btn-small btn-danger" data-i18n="delete_group_btn">Borrar grupo</button>
                 </form>
             </details>

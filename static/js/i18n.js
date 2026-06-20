@@ -100,6 +100,15 @@
             detail_bonus: 'bonus',
             detail_voided: '(anulada)',
             no_data: 'sin datos',
+            // History
+            game_label: 'Partida',
+            // Confirms
+            confirm_delete_game: '¿Borrar esta partida?',
+            confirm_delete_player: '¿Borrar a {name}?',
+            confirm_delete_group: '¿Borrar el grupo {name}?',
+            confirm_finish_game: '¿Finalizar la partida? Podrás reabrirla después si lo necesitas.',
+            // Standings note
+            standings_after_round: 'Después de la ronda {n} de {total}.',
         },
         en: {
             nav_home: 'Home',
@@ -191,6 +200,12 @@
             detail_bonus: 'bonus',
             detail_voided: '(voided)',
             no_data: 'no data',
+            game_label: 'Game',
+            confirm_delete_game: 'Delete this game?',
+            confirm_delete_player: 'Delete {name}?',
+            confirm_delete_group: 'Delete group {name}?',
+            confirm_finish_game: 'End the game? You can reopen it later if needed.',
+            standings_after_round: 'After round {n} of {total}.',
         },
     };
 
@@ -223,6 +238,13 @@
         });
         document.querySelectorAll('[data-i18n-meta="group_players"]').forEach((el) => {
             el.textContent = t('N_players_group', { n: el.dataset.count });
+        });
+        document.querySelectorAll('form[data-confirm-key]:not([data-confirm-wired])').forEach((form) => {
+            form.dataset.confirmWired = '1';
+            form.addEventListener('submit', (e) => {
+                const msg = t(form.dataset.confirmKey, { name: form.dataset.confirmName || '' });
+                if (!confirm(msg)) e.preventDefault();
+            });
         });
     }
 
