@@ -32,8 +32,9 @@
     }
 
     function computePreviewScore(roundNumber, bid, tricks, bonus) {
-        if (bid === 0) return tricks === 0 ? 10 * roundNumber : -10 * roundNumber;
-        if (tricks === bid) return 20 * bid + (bonus || 0);
+        bonus = bonus || 0;
+        if (bid === 0) return tricks === 0 ? 10 * roundNumber + bonus : -10 * roundNumber;
+        if (tricks === bid) return 20 * bid + bonus;
         return -10 * Math.abs(bid - tricks);
     }
 
@@ -308,12 +309,19 @@
         }
 
         async function persist() {
-            const scores = rowsData.map((r) => ({
-                player_id: r.playerId,
-                bid: r.getBid(),
-                tricks: r.getTricks(),
-                bonus: r.getBonus(),
-            }));
+            function metBid(bid, tricks) { return bid === 0 ? tricks === 0 : tricks === bid; }
+            const scores = rowsData.map((r) => {
+                let bonus = r.getBonus();
+                const link = lootLinks.find((l) => l.a === r.playerId || l.b === r.playerId);
+                if (link) {
+                    const partnerId = link.a === r.playerId ? link.b : link.a;
+                    const partnerRow = rowsData.find((pr) => pr.playerId === partnerId);
+                    if (!metBid(r.getBid(), r.getTricks()) || !metBid(partnerRow.getBid(), partnerRow.getTricks())) {
+                        bonus -= link.value;
+                    }
+                }
+                return { player_id: r.playerId, bid: r.getBid(), tricks: r.getTricks(), bonus };
+            });
 
             const roundKey = String(roundNumber);
             const stored = gameData.scores[roundKey] || {};
@@ -429,12 +437,117 @@
         const roundBonusCounts = presets.map(() => 0);
         const presetButtons = presets.map(() => []);
 
+        const playerBonusUpdaters = [];
+
         function updateBonusOptionAvailability(idx) {
             const preset = presets[idx];
             const reached = preset.max != null && roundBonusCounts[idx] >= preset.max;
             presetButtons[idx].forEach((btn) => {
                 btn.disabled = reached;
             });
+            // Re-apply per-player trick restrictions on top of the round-level max
+            playerBonusUpdaters.forEach((fn) => fn());
+        }
+
+        // Loot links: pairs of players sharing the Loot bonus.
+        // If either misses their bid the bonus is voided for both when saving.
+        const lootLinks = []; // [{a: playerIdA, b: playerIdB, value, presetIdx}]
+        const lootBtnMap = {}; // {playerId: {addBonus, subtractBonus, lootBtns}}
+
+        function updateLootBtnVisual(playerId, partnerId) {
+            const entry = lootBtnMap[playerId];
+            if (!entry) return;
+            const partnerColor = partnerId
+                ? gameData.players.find((p) => p.id === partnerId)?.color : null;
+            entry.lootBtns.forEach(({ btn }) => {
+                let dot = btn.querySelector('.loot-partner-dot');
+                if (partnerColor) {
+                    if (!dot) {
+                        dot = document.createElement('span');
+                        dot.className = 'loot-partner-dot';
+                        btn.appendChild(dot);
+                    }
+                    dot.style.backgroundColor = partnerColor;
+                    btn.classList.add('loot-linked');
+                } else {
+                    dot?.remove();
+                    btn.classList.remove('loot-linked');
+                }
+            });
+        }
+
+        function clearLootLinksForPlayer(playerId) {
+            lootLinks
+                .filter((l) => l.a === playerId || l.b === playerId)
+                .forEach((link) => {
+                    lootLinks.splice(lootLinks.indexOf(link), 1);
+                    roundBonusCounts[link.presetIdx]--;
+                    const partnerId = link.a === playerId ? link.b : link.a;
+                    lootBtnMap[partnerId]?.subtractBonus(link.value);
+                    updateLootBtnVisual(partnerId, null);
+                    updateBonusOptionAvailability(link.presetIdx);
+                });
+            updateLootBtnVisual(playerId, null);
+        }
+
+        function applyLootLink(fromId, toId, presetIdx, value) {
+            const link = { a: fromId, b: toId, value, presetIdx };
+            lootLinks.push(link);
+            roundBonusCounts[presetIdx]++;
+            lootBtnMap[fromId]?.addBonus(value);
+            lootBtnMap[toId]?.addBonus(value);
+            updateLootBtnVisual(fromId, toId);
+            updateLootBtnVisual(toId, fromId);
+            updateBonusOptionAvailability(presetIdx);
+            requestSave();
+        }
+
+        function showLootPicker(fromId, presetIdx, anchorBtn) {
+            document.querySelector('.loot-picker')?.remove();
+            const picker = document.createElement('div');
+            picker.className = 'loot-picker';
+
+            const lbl = document.createElement('p');
+            lbl.className = 'loot-picker-label';
+            lbl.textContent = t('loot_pick_partner');
+            picker.appendChild(lbl);
+
+            const chips = document.createElement('div');
+            chips.className = 'loot-picker-chips';
+            const taken = lootLinks
+                .filter((l) => l.a === fromId || l.b === fromId)
+                .map((l) => (l.a === fromId ? l.b : l.a));
+            gameData.players
+                .filter((p) => p.id !== fromId && !taken.includes(p.id))
+                .forEach((partner) => {
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'loot-partner-chip';
+                    chip.append(colorDot(partner.color), document.createTextNode(partner.name));
+                    chip.addEventListener('click', () => {
+                        picker.remove();
+                        applyLootLink(fromId, partner.id, presetIdx, presets[presetIdx].value);
+                    });
+                    chips.appendChild(chip);
+                });
+            picker.appendChild(chips);
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'btn btn-secondary btn-small';
+            cancelBtn.textContent = t('cancel_btn');
+            cancelBtn.addEventListener('click', () => picker.remove());
+            picker.appendChild(cancelBtn);
+
+            anchorBtn.after(picker);
+            setTimeout(() => {
+                document.addEventListener('click', function handler(e) {
+                    if (!picker.contains(e.target) && e.target !== anchorBtn) {
+                        picker.remove();
+                        document.removeEventListener('click', handler);
+                    }
+                });
+            }, 0);
         }
 
         gameData.players.forEach((p) => {
@@ -487,6 +600,9 @@
             chevron.className = 'collapsible-chevron';
             chevron.textContent = '▸';
 
+            const bonusSummarySpan = document.createElement('span');
+            bonusSummarySpan.className = 'bonus-summary';
+
             const starBtn = document.createElement('button');
             starBtn.type = 'button';
             starBtn.className = 'winner-star' + (roundWinner === p.id ? ' active' : '');
@@ -497,7 +613,7 @@
                 refreshStars();
             });
             starBtns.push({ playerId: p.id, btn: starBtn });
-            headerRight.append(bidSummarySpan, starBtn, scoreSpan, chevron);
+            headerRight.append(bidSummarySpan, bonusSummarySpan, starBtn, scoreSpan, chevron);
 
             tricksHeader.append(tricksNameSpan, headerRight);
             tricksCard.appendChild(tricksHeader);
@@ -527,6 +643,7 @@
             let bonusTotal = entry.bonus || 0;
 
             const counts = presets.map(() => 0);
+            const playerBonusBtns = [];
 
             const bonusToggle = document.createElement('button');
             bonusToggle.type = 'button';
@@ -549,6 +666,13 @@
                 const sign = bonusTotal > 0 ? '+' : '';
                 bonusToggleLabel.textContent = t('bonus_label', { sign, total: bonusTotal });
                 bonusToggle.classList.toggle('active-bonus', bonusTotal !== 0);
+                if (bonusTotal !== 0) {
+                    bonusSummarySpan.textContent = `${sign}${bonusTotal}`;
+                    bonusSummarySpan.className = 'bonus-summary active';
+                } else {
+                    bonusSummarySpan.textContent = '';
+                    bonusSummarySpan.className = 'bonus-summary';
+                }
             }
             refreshBonusToggle();
             bonusPanels.push({ panel: bonusPanel, chevron: bonusToggleChevron });
@@ -583,19 +707,29 @@
 
                 optBtn.append(labelSpan, badge);
 
-                optBtn.addEventListener('click', () => {
-                    counts[idx]++;
-                    roundBonusCounts[idx]++;
-                    bonusTotal += preset.value;
-                    badge.textContent = `×${counts[idx]}`;
-                    badge.style.display = 'inline-block';
-                    optBtn.classList.add('has-count');
-                    refreshBonusToggle();
-                    updateBonusOptionAvailability(idx);
-                    updatePreview();
-                    requestSave();
-                });
+                if (preset.id === 'loot') {
+                    if (!lootBtnMap[p.id]) lootBtnMap[p.id] = { lootBtns: [] };
+                    lootBtnMap[p.id].lootBtns.push({ btn: optBtn });
+                    optBtn.addEventListener('click', () => {
+                        if (roundBonusCounts[idx] >= (preset.max ?? Infinity)) return;
+                        showLootPicker(p.id, idx, optBtn);
+                    });
+                } else {
+                    optBtn.addEventListener('click', () => {
+                        counts[idx]++;
+                        roundBonusCounts[idx]++;
+                        bonusTotal += preset.value;
+                        badge.textContent = `×${counts[idx]}`;
+                        badge.style.display = 'inline-block';
+                        optBtn.classList.add('has-count');
+                        refreshBonusToggle();
+                        updateBonusOptionAvailability(idx);
+                        updatePreview();
+                        requestSave();
+                    });
+                }
 
+                playerBonusBtns[idx] = optBtn;
                 presetButtons[idx].push(optBtn);
                 updateBonusOptionAvailability(idx);
 
@@ -607,6 +741,7 @@
             resetBtn.className = 'bonus-reset';
             resetBtn.textContent = t('reset_bonus');
             resetBtn.addEventListener('click', () => {
+                clearLootLinksForPlayer(p.id);
                 bonusTotal = 0;
                 bonusPanel.querySelectorAll('.bonus-option').forEach((btn, idx) => {
                     roundBonusCounts[idx] -= counts[idx];
@@ -651,12 +786,36 @@
                 bidSummarySpan.textContent = t('bid_summary', { n: bid });
             }
 
+            if (!lootBtnMap[p.id]) lootBtnMap[p.id] = { lootBtns: [] };
+            lootBtnMap[p.id].addBonus = (amount) => {
+                bonusTotal += amount;
+                refreshBonusToggle();
+                updatePreview();
+            };
+            lootBtnMap[p.id].subtractBonus = (amount) => {
+                bonusTotal -= amount;
+                refreshBonusToggle();
+                updatePreview();
+            };
+
+            function updatePlayerBonusAvailability() {
+                const hasTricks = tricksRow.getValue() > 0;
+                presets.forEach((preset, idx) => {
+                    const btn = playerBonusBtns[idx];
+                    if (!btn || preset.zeroTricksOk) return;
+                    const reachedMax = preset.max != null && roundBonusCounts[idx] >= preset.max;
+                    btn.disabled = reachedMax || !hasTricks;
+                });
+            }
+            playerBonusUpdaters.push(updatePlayerBonusAvailability);
+
             bidRow.onChange(updatePreview);
             bidRow.onChange(requestSave);
             bidRow.onChange(updateBidCounter);
             tricksRow.onChange(updatePreview);
             tricksRow.onChange(updateTricksLimits);
             tricksRow.onChange(requestSave);
+            tricksRow.onChange(updatePlayerBonusAvailability);
             tricksRow.onChange(() => {
                 roundWinner = p.id;
                 refreshStars();
@@ -670,6 +829,7 @@
                 updatePreview,
             });
             updatePreview();
+            updatePlayerBonusAvailability();
         });
 
         updateBidCounter();

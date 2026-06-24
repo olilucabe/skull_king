@@ -7,7 +7,7 @@ def compute_score(round_number, bid, tricks, bonus=0):
     """
     bonus = bonus or 0
     if bid == 0:
-        return 10 * round_number if tricks == 0 else -10 * round_number
+        return (10 * round_number + bonus) if tricks == 0 else -10 * round_number
     if tricks == bid:
         return 20 * bid + bonus
     return -10 * abs(bid - tricks)

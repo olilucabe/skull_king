@@ -173,6 +173,7 @@ def create_app():
                 db.commit()
                 return redirect(url_for('new_game'))
 
+
             cur = db.execute(
                 'INSERT INTO games (num_rounds, expansion) VALUES (?, ?)', (num_rounds, expansion)
             )
@@ -240,7 +241,7 @@ def create_app():
     def stats():
         db = db_module.get_db()
         rows = db.execute('''
-            SELECT p.id, p.name,
+            SELECT p.id, p.name, p.color,
                    COUNT(DISTINCT g.id) AS games_played,
                    COALESCE(SUM(rs.score), 0) AS total_score
             FROM players p
@@ -252,31 +253,229 @@ def create_app():
 
         finished_games = db.execute('SELECT id FROM games WHERE finished = 1').fetchall()
         wins = {}
+        best_game = {}
         for g in finished_games:
-            top = db.execute('''
+            game_scores = db.execute('''
                 SELECT player_id, SUM(score) AS total
-                FROM round_scores
-                WHERE game_id = ?
+                FROM round_scores WHERE game_id = ?
                 GROUP BY player_id
-                ORDER BY total DESC
-                LIMIT 1
-            ''', (g['id'],)).fetchone()
-            if top:
-                wins[top['player_id']] = wins.get(top['player_id'], 0) + 1
+            ''', (g['id'],)).fetchall()
+            if not game_scores:
+                continue
+            top_score = max(s['total'] for s in game_scores)
+            for s in game_scores:
+                pid = s['player_id']
+                if s['total'] == top_score:
+                    wins[pid] = wins.get(pid, 0) + 1
+                if s['total'] > best_game.get(pid, float('-inf')):
+                    best_game[pid] = s['total']
+
+        bid_acc = db.execute('''
+            SELECT rs.player_id,
+                   COUNT(*) AS total,
+                   SUM(CASE WHEN rs.tricks_won = rs.bid THEN 1 ELSE 0 END) AS exact
+            FROM round_scores rs
+            JOIN games g ON g.id = rs.game_id AND g.finished = 1
+            WHERE rs.voided = 0
+            GROUP BY rs.player_id
+        ''').fetchall()
+        accuracy = {r['player_id']: round(r['exact'] * 100 / r['total']) if r['total'] else 0
+                    for r in bid_acc}
 
         stats_list = []
         for r in rows:
-            games_played = r['games_played']
+            gp = r['games_played']
             total = r['total_score'] or 0
+            pid = r['id']
+            w = wins.get(pid, 0)
             stats_list.append({
                 'name': r['name'],
-                'games_played': games_played,
+                'color': r['color'],
+                'games_played': gp,
                 'total_score': total,
-                'avg_score': round(total / games_played, 1) if games_played else 0,
-                'wins': wins.get(r['id'], 0),
+                'avg_score': round(total / gp, 1) if gp else 0,
+                'wins': w,
+                'win_rate': round(w * 100 / gp) if gp else 0,
+                'best_game': best_game.get(pid, 0),
+                'bid_accuracy': accuracy.get(pid, 0),
             })
+        # Keep player ids for the detail API link
+        for i, r in enumerate(rows):
+            stats_list[i]['id'] = r['id']
+
         stats_list.sort(key=lambda x: (x['wins'], x['avg_score']), reverse=True)
-        return render_template('stats.html', stats=stats_list)
+        max_avg = max((s['avg_score'] for s in stats_list), default=1) or 1
+        max_best = max((s['best_game'] for s in stats_list), default=1) or 1
+
+        # --- Group stats -------------------------------------------------
+        finished_ids = [g['id'] for g in finished_games]
+        groups_raw = db.execute('''
+            SELECT g.id, g.name, g.emoji,
+                   COUNT(gp.player_id) AS member_count
+            FROM groups g
+            LEFT JOIN group_players gp ON gp.group_id = g.id
+            GROUP BY g.id
+            HAVING member_count >= 2
+        ''').fetchall()
+
+        group_stats_list = []
+        for grp in groups_raw:
+            member_ids = [r['player_id'] for r in db.execute(
+                'SELECT player_id FROM group_players WHERE group_id = ?', (grp['id'],)
+            ).fetchall()]
+            if len(member_ids) < 2 or not finished_ids:
+                continue
+            ph = ','.join('?' * len(member_ids))
+            fph = ','.join('?' * len(finished_ids))
+            game_rows = db.execute(f'''
+                SELECT gp.game_id FROM game_players gp
+                WHERE gp.game_id IN ({fph}) AND gp.player_id IN ({ph})
+                GROUP BY gp.game_id
+                HAVING COUNT(DISTINCT gp.player_id) = ?
+            ''', finished_ids + member_ids + [len(member_ids)]).fetchall()
+            group_game_ids = [r['game_id'] for r in game_rows]
+            if not group_game_ids:
+                continue
+            g_wins = 0
+            best_avg = 0.0
+            total_avg = 0.0
+            for gid in group_game_ids:
+                top = db.execute(
+                    'SELECT player_id FROM round_scores WHERE game_id = ? '
+                    'GROUP BY player_id ORDER BY SUM(score) DESC LIMIT 1', (gid,)
+                ).fetchone()
+                if top and top['player_id'] in member_ids:
+                    g_wins += 1
+                mem = db.execute(f'''
+                    SELECT SUM(score) AS s FROM round_scores
+                    WHERE game_id = ? AND player_id IN ({ph})
+                    GROUP BY player_id
+                ''', [gid] + member_ids).fetchall()
+                if mem:
+                    avg = sum(r['s'] or 0 for r in mem) / len(mem)
+                    total_avg += avg
+                    if avg > best_avg:
+                        best_avg = avg
+            n = len(group_game_ids)
+            group_stats_list.append({
+                'name': grp['name'],
+                'emoji': grp['emoji'],
+                'member_count': grp['member_count'],
+                'games_played': n,
+                'wins': g_wins,
+                'win_rate': round(g_wins * 100 / n) if n else 0,
+                'avg_score': round(total_avg / n, 1) if n else 0,
+                'best_game': round(best_avg, 1),
+            })
+        group_stats_list.sort(key=lambda x: (x['wins'], x['avg_score']), reverse=True)
+        max_g_avg = max((s['avg_score'] for s in group_stats_list), default=1) or 1
+        max_g_best = max((s['best_game'] for s in group_stats_list), default=1) or 1
+
+        return render_template('stats.html',
+            stats=stats_list, max_avg=max_avg, max_best=max_best,
+            group_stats=group_stats_list, max_g_avg=max_g_avg, max_g_best=max_g_best)
+
+    @app.route('/api/stats/player/<int:player_id>')
+    def api_player_stats(player_id):
+        db = db_module.get_db()
+        player = db.execute('SELECT * FROM players WHERE id = ?', (player_id,)).fetchone()
+        if not player:
+            abort(404)
+
+        bid_rows = db.execute('''
+            SELECT rs.bid,
+                   COUNT(*) AS total,
+                   SUM(CASE WHEN rs.tricks_won = rs.bid THEN 1 ELSE 0 END) AS exact,
+                   SUM(CASE WHEN rs.tricks_won > rs.bid THEN 1 ELSE 0 END) AS got_more,
+                   SUM(CASE WHEN rs.tricks_won < rs.bid THEN 1 ELSE 0 END) AS got_less
+            FROM round_scores rs
+            JOIN games g ON g.id = rs.game_id AND g.finished = 1
+            WHERE rs.player_id = ? AND rs.voided = 0
+            GROUP BY rs.bid ORDER BY rs.bid
+        ''', (player_id,)).fetchall()
+
+        round_rows = db.execute('''
+            SELECT rs.round_number AS rn,
+                   COUNT(*) AS total,
+                   SUM(CASE WHEN rs.tricks_won = rs.bid THEN 1 ELSE 0 END) AS exact,
+                   AVG(CAST(rs.bid AS REAL)) AS avg_bid,
+                   AVG(rs.score) AS avg_score
+            FROM round_scores rs
+            JOIN games g ON g.id = rs.game_id AND g.finished = 1
+            WHERE rs.player_id = ? AND rs.voided = 0
+            GROUP BY rs.round_number ORDER BY rs.round_number
+        ''', (player_id,)).fetchall()
+
+        game_rows = db.execute('''
+            SELECT g.id, SUM(rs.score) AS total
+            FROM games g
+            JOIN round_scores rs ON rs.game_id = g.id AND rs.player_id = ?
+            WHERE g.finished = 1
+            GROUP BY g.id ORDER BY g.created_at
+        ''', (player_id,)).fetchall()
+
+        best = db.execute('''
+            SELECT rs.bid, rs.tricks_won, rs.bonus_points, rs.score, rs.round_number
+            FROM round_scores rs
+            JOIN games g ON g.id = rs.game_id AND g.finished = 1
+            WHERE rs.player_id = ? AND rs.voided = 0
+            ORDER BY rs.score DESC LIMIT 1
+        ''', (player_id,)).fetchone()
+
+        worst = db.execute('''
+            SELECT rs.bid, rs.tricks_won, rs.bonus_points, rs.score, rs.round_number
+            FROM round_scores rs
+            JOIN games g ON g.id = rs.game_id AND g.finished = 1
+            WHERE rs.player_id = ? AND rs.voided = 0
+            ORDER BY rs.score ASC LIMIT 1
+        ''', (player_id,)).fetchone()
+
+        agg = db.execute('''
+            SELECT COALESCE(SUM(rs.bonus_points), 0) AS total_bonus,
+                   SUM(CASE WHEN rs.voided = 1 THEN 1 ELSE 0 END) AS voided_count,
+                   COUNT(*) AS total_rounds,
+                   AVG(CAST(rs.bid AS REAL) / rs.round_number) AS avg_bid_ratio,
+                   MAX(rs.bid) AS max_bid_ever
+            FROM round_scores rs
+            JOIN games g ON g.id = rs.game_id AND g.finished = 1
+            WHERE rs.player_id = ?
+        ''', (player_id,)).fetchone()
+
+        top_bid = db.execute('''
+            SELECT bid, COUNT(*) AS cnt FROM round_scores rs
+            JOIN games g ON g.id = rs.game_id AND g.finished = 1
+            WHERE rs.player_id = ? AND rs.voided = 0
+            GROUP BY bid ORDER BY cnt DESC LIMIT 1
+        ''', (player_id,)).fetchone()
+
+        bid_stats = [{'bid': r['bid'], 'total': r['total'],
+                      'exact': r['exact'], 'got_more': r['got_more'], 'got_less': r['got_less'],
+                      'accuracy': round(r['exact'] * 100 / r['total']) if r['total'] else 0}
+                     for r in bid_rows]
+
+        round_stats = [{'round': r['rn'], 'total': r['total'], 'exact': r['exact'],
+                        'accuracy': round(r['exact'] * 100 / r['total']) if r['total'] else 0,
+                        'avg_bid': round(r['avg_bid'], 1) if r['avg_bid'] else 0,
+                        'avg_score': round(r['avg_score'], 1) if r['avg_score'] else 0}
+                       for r in round_rows]
+
+        zero = next((b for b in bid_stats if b['bid'] == 0), None)
+
+        return jsonify({
+            'name': player['name'], 'color': player['color'],
+            'bid_stats': bid_stats,
+            'round_stats': round_stats,
+            'score_history': [r['total'] for r in game_rows],
+            'best_round': dict(best) if best else None,
+            'worst_round': dict(worst) if worst else None,
+            'total_bonus': agg['total_bonus'] or 0,
+            'voided_count': agg['voided_count'] or 0,
+            'total_rounds': agg['total_rounds'] or 0,
+            'avg_bid_ratio': round((agg['avg_bid_ratio'] or 0) * 100),
+            'max_bid_ever': agg['max_bid_ever'] or 0,
+            'top_bid': top_bid['bid'] if top_bid else 0,
+            'zero_bid': zero,
+        })
 
     # ------------------------------------------------------------------
     # API

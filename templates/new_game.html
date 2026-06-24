@@ -49,11 +49,35 @@
             <span data-i18n="expansion_checkbox">Jugamos con la expansión</span>
         </label>
 
-        <button type="submit" class="btn" data-i18n="create_game_btn">Crear partida</button>
+        <div id="max-players-warning" class="player-limit-warning" style="display:none">
+            ⚠️ <span data-i18n="max_players_warning">Según las reglas oficiales el máximo es 8 jugadores.</span>
+        </div>
+
+        <button type="submit" class="btn" id="create-game-btn" data-i18n="create_game_btn">Crear partida</button>
     </form>
 
     <script>
         const GROUP_PLAYER_IDS = {{ group_player_ids | tojson }};
+        const MAX_PLAYERS = 8;
+
+        function countSelectedPlayers() {
+            const checked = document.querySelectorAll('#new-game-form input[name="player_ids"]:checked').length;
+            const newNames = (document.querySelector('input[name="new_players"]').value || '')
+                .split(',').map(s => s.trim()).filter(Boolean).length;
+            return checked + newNames;
+        }
+
+        function updatePlayerWarning() {
+            const total = countSelectedPlayers();
+            const warning = document.getElementById('max-players-warning');
+            warning.style.display = total > MAX_PLAYERS ? '' : 'none';
+        }
+
+        document.querySelectorAll('#new-game-form input[name="player_ids"]').forEach((cb) => {
+            cb.addEventListener('change', updatePlayerWarning);
+        });
+        document.querySelector('input[name="new_players"]').addEventListener('input', updatePlayerWarning);
+
         document.querySelectorAll('.group-chip').forEach((chip) => {
             chip.addEventListener('click', () => {
                 const groupId = chip.dataset.groupId;
@@ -62,6 +86,7 @@
                     checkbox.checked = memberIds.includes(checkbox.value);
                 });
                 document.querySelectorAll('.group-chip').forEach((c) => c.classList.toggle('active', c === chip));
+                updatePlayerWarning();
             });
         });
     </script>
