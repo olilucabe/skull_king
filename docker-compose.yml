@@ -1,0 +1,15 @@
+services:
+  skull-king:
+    build: .
+    container_name: skull-king
+    restart: unless-stopped
+    ports:
+      - "5000:8000"
+    volumes:
+      - skull-king-data:/data
+    environment:
+      - SECRET_KEY=cambia-esto-por-algo-secreto
+      - DATABASE=/data/skull_king.db
+
+volumes:
+  skull-king-data:

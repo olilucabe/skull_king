@@ -3,7 +3,7 @@ import sqlite3
 
 from flask import g
 
-DATABASE = os.path.join(os.path.dirname(__file__), 'skull_king.db')
+DATABASE = os.environ.get('DATABASE', os.path.join(os.path.dirname(__file__), 'skull_king.db'))
 SCHEMA = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
 # Shared palette of player colors. Index determines the default color
