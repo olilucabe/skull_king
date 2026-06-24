@@ -78,48 +78,35 @@
 {# ===== GROUPS VIEW ===== #}
 <div id="view-groups" style="display:none">
 
-{% if group_stats %}
+{% if groups_list %}
 
-<div class="stats-sort-bar">
-    <span class="stats-sort-label" data-i18n="sort_by">Ordenar por</span>
-    <button class="stats-sort-btn group-sort-btn active" data-sort="wins" data-i18n="wins_col">Victorias</button>
-    <button class="stats-sort-btn group-sort-btn" data-sort="avg_score" data-i18n="avg_col">Media</button>
-    <button class="stats-sort-btn group-sort-btn" data-sort="best_game" data-i18n="best_game">Mejor partida</button>
+<div class="group-selector" id="group-selector">
+    {% for g in groups_list %}
+    <button class="group-select-chip" data-group-id="{{ g.id }}">
+        {{ g.emoji }} {{ g.name }}
+    </button>
+    {% endfor %}
 </div>
 
-<div class="stats-cards" id="group-cards">
-    {% for s in group_stats %}
-    <div class="stat-card"
-         data-wins="{{ s.wins }}"
-         data-avg_score="{{ s.avg_score }}"
-         data-best_game="{{ s.best_game }}">
-        <div class="stat-card-header">
-            <div class="stat-card-rank">{{ loop.index }}º</div>
-            <div class="stat-card-avatar group-avatar">{{ s.emoji }}</div>
-            <div>
-                <div class="stat-card-name">{{ s.name }}</div>
-                <div class="stat-card-games">{{ s.member_count }} <span data-i18n="nav_players">jugadores</span> · {{ s.games_played }} <span data-i18n="games_col">partidas</span></div>
-            </div>
-        </div>
-        <div class="stat-rows">
-            <div class="stat-row">
-                <span class="stat-row-label" data-i18n="wins_col">Victorias</span>
-                <div class="stat-bar-wrap"><div class="stat-bar" data-pct="{{ s.win_rate }}"></div></div>
-                <span class="stat-row-value">{{ s.wins }} <span class="stat-muted">({{ s.win_rate }}%)</span></span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-row-label" data-i18n="avg_col">Media</span>
-                <div class="stat-bar-wrap"><div class="stat-bar" data-pct="{{ (s.avg_score / max_g_avg * 100) | round | int }}"></div></div>
-                <span class="stat-row-value">{{ s.avg_score }}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-row-label" data-i18n="best_game">Mejor partida</span>
-                <div class="stat-bar-wrap"><div class="stat-bar" data-pct="{{ (s.best_game / max_g_best * 100) | round | int }}"></div></div>
-                <span class="stat-row-value">{{ s.best_game }}</span>
-            </div>
+<div id="group-content" style="display:none">
+    <div class="group-content-header">
+        <span class="group-content-title" id="group-content-title"></span>
+        <div class="group-mode-wrap">
+            <button class="stats-sort-btn group-mode-btn active" data-mode="all" data-i18n="group_mode_all">Todas las partidas</button>
+            <button class="stats-sort-btn group-mode-btn" data-mode="shared" data-i18n="group_mode_shared">Solo partidas juntos</button>
         </div>
     </div>
-    {% endfor %}
+
+    <div class="stats-sort-bar" id="group-sort-bar" style="display:none">
+        <span class="stats-sort-label" data-i18n="sort_by">Ordenar por</span>
+        <button class="stats-sort-btn grp-sort-btn active" data-sort="wins" data-i18n="wins_col">Victorias</button>
+        <button class="stats-sort-btn grp-sort-btn" data-sort="avg_score" data-i18n="avg_col">Media</button>
+        <button class="stats-sort-btn grp-sort-btn" data-sort="bid_accuracy" data-i18n="bid_accuracy">Precisión</button>
+        <button class="stats-sort-btn grp-sort-btn" data-sort="best_game" data-i18n="best_game">Mejor partida</button>
+    </div>
+
+    <div class="stats-cards" id="group-player-cards"></div>
+    <p class="muted" id="group-no-data" style="display:none" data-i18n="no_group_data">No hay partidas con todos los miembros del grupo.</p>
 </div>
 
 {% else %}
@@ -255,25 +242,143 @@
     // Initial tie-aware rank + podium on page load
     sortPlayers(currentPlayerKey, currentPlayerLabel);
 
-    // --- Group sort -----------------------------------------------------
-    const groupCards = document.getElementById('group-cards');
-    if (groupCards) {
-        function sortGroups(key) {
-            const sorted = Array.from(groupCards.children).sort((a, b) =>
-                parseFloat(b.dataset[key]) - parseFloat(a.dataset[key])
-            );
-            sorted.forEach((c) => groupCards.appendChild(c));
-            applyRanks(sorted, key);
+    // --- Group player stats (selector + mode toggle + dynamic cards) ----
+    let activeGroupId = null;
+    let activeGroupMode = 'all';
+    let activeGrpSort = 'wins';
+    const grpCards = document.getElementById('group-player-cards');
+    const grpContent = document.getElementById('group-content');
+    const grpNoData = document.getElementById('group-no-data');
+    const grpSortBar = document.getElementById('group-sort-bar');
+
+    function buildGroupCard(s, rank) {
+        const card = document.createElement('div');
+        card.className = 'stat-card';
+        card.style.cursor = 'pointer';
+        card.dataset.playerId = s.id;
+        card.dataset.name = s.name;
+        card.dataset.color = s.color;
+        card.dataset.initial = s.name[0].toUpperCase();
+        card.dataset.wins = s.wins;
+        card.dataset.avg_score = s.avg_score;
+        card.dataset.bid_accuracy = s.bid_accuracy;
+        card.dataset.best_game = s.best_game;
+
+        const hdr = document.createElement('div');
+        hdr.className = 'stat-card-header';
+        const rnk = document.createElement('div');
+        rnk.className = 'stat-card-rank';
+        rnk.textContent = rank + 'º';
+        const av = document.createElement('div');
+        av.className = 'stat-card-avatar';
+        av.style.background = s.color;
+        av.textContent = s.name[0].toUpperCase();
+        const nm = document.createElement('div');
+        nm.className = 'stat-card-name';
+        nm.textContent = s.name;
+        const gm = document.createElement('div');
+        gm.className = 'stat-card-games';
+        gm.textContent = s.games_played + ' ' + t('games_col');
+        hdr.append(rnk, av, nm, gm);
+        card.appendChild(hdr);
+
+        const rows = document.createElement('div');
+        rows.className = 'stat-rows';
+        function mkRow(label, pct, color, val) {
+            const row = document.createElement('div');
+            row.className = 'stat-row';
+            const l = document.createElement('span');
+            l.className = 'stat-row-label';
+            l.textContent = label;
+            const w = document.createElement('div');
+            w.className = 'stat-bar-wrap';
+            const b = document.createElement('div');
+            b.className = 'stat-bar';
+            b.style.background = color;
+            b.dataset.pct = pct;
+            w.appendChild(b);
+            const v = document.createElement('span');
+            v.className = 'stat-row-value';
+            v.textContent = val;
+            row.append(l, w, v);
+            return row;
         }
-        document.querySelectorAll('.group-sort-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.group-sort-btn').forEach((b) => b.classList.remove('active'));
-                btn.classList.add('active');
-                sortGroups(btn.dataset.sort);
-            });
-        });
-        sortGroups('wins');
+        rows.append(
+            mkRow(t('wins_col'),     s.win_rate,     s.color, `${s.wins} (${s.win_rate}%)`),
+            mkRow(t('avg_col'),      s.avg_pct,      s.color, String(s.avg_score)),
+            mkRow(t('bid_accuracy'), s.bid_accuracy, s.color, `${s.bid_accuracy}%`),
+            mkRow(t('best_game'),    s.best_pct,     s.color, String(s.best_game))
+        );
+        card.appendChild(rows);
+        return card;
     }
+
+    function sortGrpCards(key) {
+        activeGrpSort = key;
+        const cards = Array.from(grpCards.children);
+        const sorted = cards.sort((a, b) => parseFloat(b.dataset[key]) - parseFloat(a.dataset[key]));
+        const r = ranks(sorted, key);
+        sorted.forEach((c, i) => {
+            c.querySelector('.stat-card-rank').textContent = r[i] + 'º';
+            grpCards.appendChild(c);
+        });
+    }
+
+    async function loadGroupStats() {
+        if (!activeGroupId) return;
+        const res = await fetch(`/api/stats/group/${activeGroupId}?mode=${activeGroupMode}`);
+        const data = await res.json();
+        grpCards.innerHTML = '';
+        if (!data.length) {
+            grpNoData.style.display = '';
+            grpSortBar.style.display = 'none';
+            return;
+        }
+        grpNoData.style.display = 'none';
+        grpSortBar.style.display = '';
+        data.forEach((s, i) => grpCards.appendChild(buildGroupCard(s, i + 1)));
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            grpCards.querySelectorAll('.stat-bar').forEach(b => { b.style.width = (b.dataset.pct || 0) + '%'; });
+        }));
+        sortGrpCards(activeGrpSort);
+    }
+
+    document.querySelectorAll('.group-select-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.group-select-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            activeGroupId = chip.dataset.groupId;
+            document.getElementById('group-content-title').textContent = chip.textContent.trim();
+            grpContent.style.display = '';
+            loadGroupStats();
+        });
+    });
+
+    document.querySelectorAll('.group-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.group-mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeGroupMode = btn.dataset.mode;
+            loadGroupStats();
+        });
+    });
+
+    document.querySelectorAll('.grp-sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.grp-sort-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            sortGrpCards(btn.dataset.sort);
+        });
+    });
+
+    grpCards.addEventListener('click', async (e) => {
+        const card = e.target.closest('[data-player-id]');
+        if (!card) return;
+        const res = await fetch(`/api/stats/player/${card.dataset.playerId}`);
+        if (!res.ok) return;
+        closeModal();
+        buildModal(await res.json());
+    });
 
     // --- Animate bars ---------------------------------------------------
     requestAnimationFrame(() => requestAnimationFrame(() => {

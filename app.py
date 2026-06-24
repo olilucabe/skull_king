@@ -373,7 +373,83 @@ def create_app():
 
         return render_template('stats.html',
             stats=stats_list, max_avg=max_avg, max_best=max_best,
-            group_stats=group_stats_list, max_g_avg=max_g_avg, max_g_best=max_g_best)
+            groups_list=[{'id': r['id'], 'name': r['name'], 'emoji': r['emoji']}
+                         for r in groups_raw])
+
+    @app.route('/api/stats/group/<int:group_id>')
+    def api_group_player_stats(group_id):
+        mode = request.args.get('mode', 'all')
+        db = db_module.get_db()
+        members = db.execute('''
+            SELECT p.id, p.name, p.color FROM players p
+            JOIN group_players gp ON gp.player_id = p.id
+            WHERE gp.group_id = ? ORDER BY p.name
+        ''', (group_id,)).fetchall()
+        if not members:
+            return jsonify([])
+        member_ids = [m['id'] for m in members]
+        ph = ','.join('?' * len(member_ids))
+
+        all_finished = [r['id'] for r in db.execute('SELECT id FROM games WHERE finished=1').fetchall()]
+        if not all_finished:
+            return jsonify([])
+
+        if mode == 'shared':
+            fph = ','.join('?' * len(all_finished))
+            game_ids = [r['game_id'] for r in db.execute(f'''
+                SELECT gp.game_id FROM game_players gp
+                WHERE gp.game_id IN ({fph}) AND gp.player_id IN ({ph})
+                GROUP BY gp.game_id HAVING COUNT(DISTINCT gp.player_id) = ?
+            ''', all_finished + member_ids + [len(member_ids)]).fetchall()]
+        else:
+            game_ids = all_finished
+        if not game_ids:
+            return jsonify([])
+
+        gph = ','.join('?' * len(game_ids))
+        wins, best_game = {}, {}
+        for gid in game_ids:
+            rows = db.execute('SELECT player_id, SUM(score) AS s FROM round_scores WHERE game_id=? GROUP BY player_id', (gid,)).fetchall()
+            if not rows: continue
+            top = max(r['s'] for r in rows)
+            for r in rows:
+                pid = r['player_id']
+                if r['s'] == top: wins[pid] = wins.get(pid, 0) + 1
+                if r['s'] > best_game.get(pid, float('-inf')): best_game[pid] = r['s']
+
+        acc_rows = db.execute(f'''
+            SELECT player_id, COUNT(*) AS total,
+                   SUM(CASE WHEN tricks_won=bid THEN 1 ELSE 0 END) AS exact
+            FROM round_scores WHERE game_id IN ({gph}) AND voided=0
+            GROUP BY player_id
+        ''', game_ids).fetchall()
+        accuracy = {r['player_id']: round(r['exact']*100/r['total']) if r['total'] else 0 for r in acc_rows}
+
+        result = []
+        for m in members:
+            pid = m['id']
+            row = db.execute(f'''
+                SELECT COUNT(DISTINCT g.id) AS cnt, COALESCE(SUM(rs.score),0) AS total
+                FROM games g
+                JOIN game_players gp ON gp.game_id=g.id AND gp.player_id=?
+                LEFT JOIN round_scores rs ON rs.game_id=g.id AND rs.player_id=?
+                WHERE g.id IN ({gph})
+            ''', [pid, pid] + game_ids).fetchone()
+            gp = row['cnt'] if row else 0
+            total = row['total'] if row else 0
+            w = wins.get(pid, 0)
+            result.append({'id': pid, 'name': m['name'], 'color': m['color'],
+                           'games_played': gp, 'avg_score': round(total/gp,1) if gp else 0,
+                           'wins': w, 'win_rate': round(w*100/gp) if gp else 0,
+                           'best_game': best_game.get(pid, 0),
+                           'bid_accuracy': accuracy.get(pid, 0)})
+        result.sort(key=lambda x: (x['wins'], x['avg_score']), reverse=True)
+        max_avg = max((s['avg_score'] for s in result), default=1) or 1
+        max_best = max((s['best_game'] for s in result), default=1) or 1
+        for s in result:
+            s['avg_pct'] = round(s['avg_score']/max_avg*100)
+            s['best_pct'] = round(s['best_game']/max_best*100)
+        return jsonify(result)
 
     @app.route('/api/stats/player/<int:player_id>')
     def api_player_stats(player_id):

@@ -1295,6 +1295,58 @@ input:focus, select:focus {
     border: 1px solid var(--border);
 }
 
+.group-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.group-select-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s var(--ease-fast);
+}
+
+.group-select-chip:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.group-select-chip.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent;
+    color: #fff;
+}
+
+.group-content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.group-content-title {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.group-mode-wrap {
+    display: flex;
+    gap: 0.4rem;
+}
+
 .stats-podium {
     display: flex;
     align-items: flex-end;
